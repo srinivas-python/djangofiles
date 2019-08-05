@@ -1,2 +1,2 @@
-# django.dbresturant code
+# djangoresturantcode
 contains django work
