@@ -1,0 +1,116 @@
+Schema Migration
+Migrations are how Django stores changes to your models (and thus your
+database schema).
+
+Previously, after creating the database, we have enabled the migrations
+mechanism with the command:
+
+python manage.py makemigrations myrestaurants
+The previous command computes the changes to be performed to the schema,
+in this case to create it from scratch, and stores them in
+myrestaurants/migrations/0001_initial.py
+
+Then, the following command applied this changes and populates the
+database schema:
+
+python manage.py migrate
+From this moment, whenever the model is updated, it is possible to
+migrate the schema so the data already inserted in the database is
+adapted to the new schema database.
+
+The previous step should be then repeated. First, to compute the changes
+to be done to the schema and all the instance data currently stored:
+
+python manage.py makemigrations myrestaurants
+This will generate a new migration file, like
+myrestaurants/migrations/0002_...py
+
+Then, the changes are applied to synchronize the model and the database:
+
+python manage.py migrate
+Note: if the migrations mechanism is not activated for a particular app,
+when the app model is changed the database must be deleted and
+recreated.
+
+Image Field
+The image field is a kind of field in the data model that allows associating
+images to model entities and storing them.
+
+First of all, it is necessary to install the Python image library
+Pillow. Follow:
+http://pillow.readthedocs.org/en/latest/installation.html
+
+Then, in myrecommendations/settings.py add:
+
+MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
+MEDIA_URL = '/media/'
+And in myrecommendations/urls.py, add at the end:
+
+
+from django.conf import settings
+
+if settings.DEBUG:
+    urlpatterns += patterns('', 
+    	url(r'\^media/(?P<path>.\*)\$', 'django.views.static.serve', 
+    		{'document_root': settings.MEDIA_ROOT, }),
+)
+Finally, in myrestaurants/models.py it is possible now to add an ImageField
+to the Dish class to store images of the dishes:
+
+  image = models.ImageField(upload_to="myrestaurants", blank=True, null=True)
+This field can be then used from the templates to display images, for instance to the
+dish_detail.html template to be added in myrestaurants/templates/myrestaurants:
+
+{% extends "myrestaurants/base.html" %}
+
+{% block content %}
+
+<h1>
+  {{ dish.name }}
+  {% if user == dish.user %}
+    (<a href="{% url 'myrestaurants:dish_edit' dish.restaurant.id dish.id %}">edit</a>)
+  {% endif %}
+</h1>
+
+<p>{{ dish.description }}</p>
+
+{% if dish.image %}
+  <p><img src="{{ dish.image.url }}"/></p>
+{% endif %}
+
+<p>Served by 
+  <a href="{% url 'myrestaurants:restaurant_detail' dish.restaurant.id %}">
+    {{ dish.restaurant.name}}
+  </a>
+</p>
+
+{% endblock %}
+
+{% block footer %}
+  Created by {{ dish.user }} on {{ dish.date }}
+{% endblock %}
+It is also important, when editing the image field using forms, to add
+the appropriate encoding to be used when uploading the image. To do that,
+edit form.html and include the appropriate enctype attribute:
+
+{% extends "myrestaurants/base.html" %}
+
+{% block content %}
+
+<form method="post" enctype="multipart/form-data" action="">
+  {% csrf_token %}
+  <table>
+    {{ form.as_table }}
+  </table>
+  <input type="submit" value="Submit"/>
+</form>
+
+{% endblock %}
+And remember, if you modify the class Dish to add the new image field image, you
+will need to migrate the database to upload the relevant tables so they include
+the new field:
+
+python manage.py makemigrations myrestaurants
+
+python manage.py migrate
+Otherwise, you will need to remove the database file and start from scratch.
